@@ -1962,6 +1962,40 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_create_schema_with_charset() {
+    match mysql().one_statement_parses_to(
+        "CREATE SCHEMA IF NOT EXISTS s DEFAULT CHARACTER SET = utf8 COLLATE utf8_bin",
+        "CREATE SCHEMA IF NOT EXISTS s DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_bin",
+    ) {
+        Statement::CreateSchema {
+            default_charset,
+            default_collation,
+            ..
+        } => {
+            assert_eq!(Some("utf8".to_string()), default_charset);
+            assert_eq!(Some("utf8_bin".to_string()), default_collation);
+        }
+        _ => unreachable!(),
+    }
+    mysql().one_statement_parses_to(
+        "CREATE SCHEMA s CHARACTER SET utf16",
+        "CREATE SCHEMA s DEFAULT CHARACTER SET utf16",
+    );
+    mysql().verified_stmt("CREATE SCHEMA s DEFAULT CHARACTER SET utf8mb4");
+    match mysql().verified_stmt("CREATE SCHEMA s DEFAULT COLLATE utf8mb4_bin") {
+        Statement::CreateSchema {
+            default_collation,
+            default_collate_spec,
+            ..
+        } => {
+            assert_eq!(Some("utf8mb4_bin".to_string()), default_collation);
+            assert_eq!(None, default_collate_spec);
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 

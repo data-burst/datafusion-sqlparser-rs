@@ -4762,7 +4762,9 @@ fn parse_create_schema() {
     verified_stmt(r#"CREATE SCHEMA a.b.c OPTIONS(key1 = 'value1', key2 = 'value2')"#);
     verified_stmt(r#"CREATE SCHEMA IF NOT EXISTS a OPTIONS(key1 = 'value1')"#);
     verified_stmt(r#"CREATE SCHEMA IF NOT EXISTS a OPTIONS()"#);
-    verified_stmt(r#"CREATE SCHEMA IF NOT EXISTS a DEFAULT COLLATE 'und:ci' OPTIONS()"#);
+    // MySQL reads `DEFAULT COLLATE` as the schema's default collation, see `default_collation`
+    all_dialects_except(|d| d.supports_create_schema_charset())
+        .verified_stmt(r#"CREATE SCHEMA IF NOT EXISTS a DEFAULT COLLATE 'und:ci' OPTIONS()"#);
     verified_stmt(r#"CREATE SCHEMA a.b.c WITH (key1 = 'value1', key2 = 'value2')"#);
     verified_stmt(r#"CREATE SCHEMA IF NOT EXISTS a WITH (key1 = 'value1')"#);
     verified_stmt(r#"CREATE SCHEMA IF NOT EXISTS a WITH ()"#);

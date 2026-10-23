@@ -212,6 +212,10 @@ impl Dialect for MySqlDialect {
         true
     }
 
+    fn supports_create_schema_charset(&self) -> bool {
+        true
+    }
+
     fn supports_cross_join_constraint(&self) -> bool {
         true
     }

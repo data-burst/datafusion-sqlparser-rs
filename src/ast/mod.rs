@@ -4463,6 +4463,18 @@ pub enum Statement {
         ///
         /// [Snowflake](https://docs.snowflake.com/en/sql-reference/sql/create-clone#databases-schemas)
         clone: Option<ObjectName>,
+        /// Optional default character set.
+        ///
+        /// ```sql
+        /// CREATE SCHEMA myschema DEFAULT CHARACTER SET utf8mb4
+        /// ```
+        ///
+        /// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/create-database.html)
+        default_charset: Option<String>,
+        /// Optional default collation.
+        ///
+        /// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/create-database.html)
+        default_collation: Option<String>,
     },
     /// ```sql
     /// CREATE DATABASE
@@ -6108,6 +6120,8 @@ impl fmt::Display for Statement {
                 options,
                 default_collate_spec,
                 clone,
+                default_charset,
+                default_collation,
             } => {
                 write!(
                     f,
@@ -6116,6 +6130,14 @@ impl fmt::Display for Statement {
                     if_not_exists = if *if_not_exists { "IF NOT EXISTS " } else { "" },
                     name = schema_name
                 )?;
+
+                if let Some(charset) = default_charset {
+                    write!(f, " DEFAULT CHARACTER SET {charset}")?;
+                }
+
+                if let Some(collation) = default_collation {
+                    write!(f, " DEFAULT COLLATE {collation}")?;
+                }
 
                 if let Some(collate) = default_collate_spec {
                     write!(f, " DEFAULT COLLATE {collate}")?;
