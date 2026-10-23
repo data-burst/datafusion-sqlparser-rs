@@ -1734,6 +1734,20 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect supports the national character types
+    /// `NATIONAL CHAR`, `NATIONAL VARCHAR`, `NCHAR VARCHAR` and their
+    /// `CHARACTER` and `VARYING` spellings.
+    ///
+    /// Example:
+    /// ```sql
+    /// CREATE TABLE t (a NATIONAL CHAR(10), b NCHAR VARCHAR(255));
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/charset-national.html>
+    fn supports_national_character_types(&self) -> bool {
+        false
+    }
+
     /// Returns true if this dialect accepts `SERIAL DEFAULT VALUE` as a column option,
     /// an alias for `NOT NULL AUTO_INCREMENT UNIQUE` on an integer column.
     ///

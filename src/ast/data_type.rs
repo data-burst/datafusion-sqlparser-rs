@@ -73,6 +73,19 @@ pub enum DataType {
     Varchar(Option<CharacterLength>),
     /// Variable-length character type, e.g. NVARCHAR(10).
     Nvarchar(Option<CharacterLength>),
+    /// [MySQL] national character type: `NATIONAL` followed by `CHAR`, `CHARACTER`,
+    /// `VARCHAR`, `CHAR VARYING` or `CHARACTER VARYING`, e.g. `NATIONAL CHAR(10)`.
+    ///
+    /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/charset-national.html
+    National(Box<DataType>),
+    /// [MySQL] national variable-length character type, e.g. `NCHAR VARCHAR(10)`.
+    ///
+    /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/charset-national.html
+    NcharVarchar(Option<CharacterLength>),
+    /// [MySQL] national variable-length character type, e.g. `NCHAR VARYING(10)`.
+    ///
+    /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/charset-national.html
+    NcharVarying(Option<CharacterLength>),
     /// Uuid type.
     Uuid,
     /// Large character object with optional length,
@@ -520,6 +533,9 @@ impl fmt::Display for DataType {
             DataType::CharVarying(size) => format_character_string_type(f, "CHAR VARYING", size),
             DataType::Varchar(size) => format_character_string_type(f, "VARCHAR", size),
             DataType::Nvarchar(size) => format_character_string_type(f, "NVARCHAR", size),
+            DataType::National(data_type) => write!(f, "NATIONAL {data_type}"),
+            DataType::NcharVarchar(size) => format_character_string_type(f, "NCHAR VARCHAR", size),
+            DataType::NcharVarying(size) => format_character_string_type(f, "NCHAR VARYING", size),
             DataType::Uuid => write!(f, "UUID"),
             DataType::CharacterLargeObject(size) => {
                 format_type_with_optional_length(f, "CHARACTER LARGE OBJECT", size, false)
