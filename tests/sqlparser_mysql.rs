@@ -2251,6 +2251,88 @@ fn parse_alter_table_drop_partition_names() {
 }
 
 #[test]
+fn parse_create_table_partition_by() {
+    let sql = "CREATE TABLE t1 (id INT, year_col INT) ENGINE = InnoDB PARTITION BY RANGE (year_col) (PARTITION p0 VALUES LESS THAN (1991), PARTITION p1 VALUES LESS THAN MAXVALUE COMMENT = 'last')";
+    match mysql().verified_stmt(sql) {
+        Statement::CreateTable(CreateTable {
+            table_options: CreateTableOptions::Plain(options),
+            ..
+        }) => assert_eq!(
+            SqlOption::Partitioning(Box::new(TablePartitioning {
+                method: PartitionMethod::Range(PartitionKeys::Expr(Box::new(Expr::Identifier(
+                    Ident::new("year_col")
+                )))),
+                partitions: None,
+                subpartition_by: None,
+                subpartitions: None,
+                definitions: vec![
+                    PartitionDefinition {
+                        name: Ident::new("p0"),
+                        values: Some(PartitionValues::LessThan(vec![PartitionBoundValue::Expr(
+                            Expr::value(number("1991"))
+                        )])),
+                        options: vec![],
+                        subpartitions: vec![],
+                    },
+                    PartitionDefinition {
+                        name: Ident::new("p1"),
+                        values: Some(PartitionValues::LessThanMaxValue),
+                        options: vec![SqlOption::Comment(CommentDef::WithEq("last".to_string()))],
+                        subpartitions: vec![],
+                    },
+                ],
+            })),
+            options[1]
+        ),
+        _ => unreachable!(),
+    }
+
+    match mysql().verified_stmt(
+        "CREATE TABLE t2 (started DATE) PARTITION BY HASH (YEAR(started)) PARTITIONS 6",
+    ) {
+        Statement::CreateTable(CreateTable {
+            table_options: CreateTableOptions::Plain(options),
+            ..
+        }) => match &options[0] {
+            SqlOption::Partitioning(partitioning) => {
+                assert!(matches!(
+                    partitioning.method,
+                    PartitionMethod::Hash { linear: false, .. }
+                ));
+                assert_eq!(Some(6), partitioning.partitions);
+            }
+            option => panic!("unexpected option {option:?}"),
+        },
+        _ => unreachable!(),
+    }
+
+    mysql().verified_stmt(
+        "CREATE TABLE t (a INT, b INT) PARTITION BY LINEAR KEY ALGORITHM = 2 (a) PARTITIONS 4",
+    );
+    mysql().verified_stmt("CREATE TABLE t (a INT) PARTITION BY KEY () PARTITIONS 2");
+    mysql().verified_stmt("CREATE TABLE t (a INT) PARTITION BY LIST (a) (PARTITION p0 VALUES IN (1, 2), PARTITION p1 VALUES IN (3))");
+    mysql().verified_stmt("CREATE TABLE t (a INT, b DATE) PARTITION BY RANGE COLUMNS (a, b) SUBPARTITION BY HASH (a) SUBPARTITIONS 2 (PARTITION p0 VALUES LESS THAN (5, MAXVALUE) STORAGE ENGINE = InnoDB (SUBPARTITION s0 ENGINE = InnoDB, SUBPARTITION s1))");
+    mysql().one_statement_parses_to(
+        "CREATE TABLE t (a INT) PARTITION BY HASH(a) PARTITIONS 6",
+        "CREATE TABLE t (a INT) PARTITION BY HASH (a) PARTITIONS 6",
+    );
+    assert_eq!(
+        mysql().parse_sql_statements(
+            "CREATE TABLE t (a INT) PARTITION BY RANGE (a) SUBPARTITION BY LIST (a)"
+        ),
+        Err(ParserError::ParserError(
+            "Expected: HASH or KEY after SUBPARTITION BY".to_string()
+        ))
+    );
+    assert_eq!(
+        mysql().parse_sql_statements("CREATE TABLE t (a INT) PARTITION BY LINEAR RANGE (a)"),
+        Err(ParserError::ParserError(
+            "Expected: HASH or KEY after LINEAR, found: RANGE".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 

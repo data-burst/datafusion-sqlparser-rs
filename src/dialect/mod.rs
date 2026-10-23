@@ -1734,6 +1734,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect accepts `PARTITION BY` partitioning options
+    /// after the table options of `CREATE TABLE`.
+    ///
+    /// Example:
+    /// ```sql
+    /// CREATE TABLE t (id INT) PARTITION BY RANGE (id) (PARTITION p0 VALUES LESS THAN (10));
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/create-table.html#create-table-partitioning>
+    fn supports_partition_by_table_option(&self) -> bool {
+        false
+    }
+
     /// Returns true if this dialect drops partitions of a table by name, with a list
     /// of partition names that is not parenthesized.
     ///

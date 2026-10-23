@@ -1064,6 +1064,7 @@ impl Spanned for SqlOption {
             ),
             SqlOption::TableSpace(_) => Span::empty(),
             SqlOption::Storage(_) => Span::empty(),
+            SqlOption::Partitioning(_) => Span::empty(),
             SqlOption::Comment(_) => Span::empty(),
             SqlOption::NamedParenthesizedList(NamedParenthesizedList {
                 key: name,
