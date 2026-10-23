@@ -1962,6 +1962,18 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_double_quoted_comment() {
+    mysql().one_statement_parses_to(
+        r#"CREATE TABLE t (a INT COMMENT "it's a") ENGINE=CSV COMMENT="General log""#,
+        "CREATE TABLE t (a INT COMMENT 'it''s a') ENGINE = CSV COMMENT = 'General log'",
+    );
+    mysql().one_statement_parses_to(
+        r#"CREATE TABLE t (a INT) COMMENT "General log""#,
+        "CREATE TABLE t (a INT) COMMENT 'General log'",
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 
