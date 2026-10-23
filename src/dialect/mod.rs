@@ -1740,6 +1740,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect accepts `SERIAL DEFAULT VALUE` as a column option,
+    /// an alias for `NOT NULL AUTO_INCREMENT UNIQUE` on an integer column.
+    ///
+    /// Example:
+    /// ```sql
+    /// CREATE TABLE t (id SMALLINT SERIAL DEFAULT VALUE);
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/numeric-type-syntax.html>
+    fn supports_serial_default_value(&self) -> bool {
+        false
+    }
+
     /// Returns true if the dialect supports the `INTERVAL` data type with [Postgres]-style options.
     ///
     /// Examples:

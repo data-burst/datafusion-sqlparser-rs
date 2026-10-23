@@ -1962,6 +1962,41 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_serial_default_value() {
+    let sql = "CREATE TABLE t (id SMALLINT(5) UNSIGNED SERIAL DEFAULT VALUE NOT NULL, val INT)";
+    match mysql_and_generic().verified_stmt(sql) {
+        Statement::CreateTable(CreateTable { columns, .. }) => {
+            assert_eq!(
+                vec![
+                    ColumnOption::DialectSpecific(vec![
+                        Token::make_keyword("SERIAL"),
+                        Token::make_keyword("DEFAULT"),
+                        Token::make_keyword("VALUE"),
+                    ]),
+                    ColumnOption::NotNull,
+                ],
+                columns[0]
+                    .options
+                    .iter()
+                    .map(|o| o.option.clone())
+                    .collect::<Vec<_>>()
+            );
+        }
+        _ => unreachable!(),
+    }
+    mysql_and_generic()
+        .verified_stmt("CREATE TABLE t (id SMALLINT NULL SERIAL DEFAULT VALUE PRIMARY KEY)");
+    mysql_and_generic().verified_stmt("CREATE TABLE t (id SERIAL, v INT DEFAULT 1)");
+    assert_eq!(
+        all_dialects_except(|d| d.supports_serial_default_value())
+            .parse_sql_statements("CREATE TABLE t (id INT SERIAL DEFAULT VALUE)"),
+        Err(ParserError::ParserError(
+            "Expected: ',' or ')' after column definition, found: SERIAL".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 
