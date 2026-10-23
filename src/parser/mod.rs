@@ -9766,7 +9766,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_optional_column_option_inner(&mut self) -> Result<Option<ColumnOption>, ParserError> {
-        if self.parse_keywords(&[Keyword::CHARACTER, Keyword::SET]) {
+        // `CHARSET` is MySQL's synonym for `CHARACTER SET`
+        if self.parse_keywords(&[Keyword::CHARACTER, Keyword::SET])
+            || self.parse_keyword(Keyword::CHARSET)
+        {
             Ok(Some(ColumnOption::CharacterSet(
                 self.parse_object_name(false)?,
             )))

@@ -1956,7 +1956,7 @@ pub enum ColumnOption {
     /// - MySQL's `AUTO_INCREMENT` or SQLite's `AUTOINCREMENT`
     /// - ...
     DialectSpecific(Vec<Token>),
-    /// `CHARACTER SET <name>` column option
+    /// `CHARACTER SET <name>` column option, also written `CHARSET <name>`
     CharacterSet(ObjectName),
     /// `COLLATE <name>` column option
     Collation(ObjectName),
