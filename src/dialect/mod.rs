@@ -1734,6 +1734,20 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect accepts a decimal number as the length of a
+    /// data type, such as `FLOAT(7.4)` or `DECIMAL(19.5)`. The type is parsed as a
+    /// [`DataType::Custom`] that keeps the length as written.
+    ///
+    /// Example:
+    /// ```sql
+    /// CREATE TABLE t (a FLOAT(7.4), b DECIMAL(19.5));
+    /// ```
+    ///
+    /// [`DataType::Custom`]: crate::ast::DataType::Custom
+    fn supports_decimal_type_length(&self) -> bool {
+        false
+    }
+
     /// Returns true if this dialect supports the national character types
     /// `NATIONAL CHAR`, `NATIONAL VARCHAR`, `NCHAR VARCHAR` and their
     /// `CHARACTER` and `VARYING` spellings.

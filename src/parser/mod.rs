@@ -13029,6 +13029,11 @@ impl<'a> Parser<'a> {
         let _guard = self.recursion_counter.try_decrease()?;
 
         let dialect = self.dialect;
+        if dialect.supports_decimal_type_length() {
+            if let Some(data_type) = self.parse_optional_decimal_length_type() {
+                return Ok((data_type, false.into()));
+            }
+        }
         self.advance_token();
         let next_token = self.get_current_token();
         let next_token_index = self.get_current_index();
@@ -13591,6 +13596,32 @@ impl<'a> Parser<'a> {
             data_type = DataType::Collate(Box::new(data_type), self.parse_object_name(false)?);
         }
         Ok((data_type, trailing_bracket))
+    }
+
+    /// Parses a type whose only modifier is a decimal number, such as MySQL's `FLOAT(7.4)`,
+    /// into a [`DataType::Custom`] that keeps the number as written.
+    fn parse_optional_decimal_length_type(&mut self) -> Option<DataType> {
+        let (word, length) = match (
+            &self.peek_nth_token_ref(0).token,
+            &self.peek_nth_token_ref(1).token,
+            &self.peek_nth_token_ref(2).token,
+            &self.peek_nth_token_ref(3).token,
+        ) {
+            (Token::Word(word), Token::LParen, Token::Number(length, _), Token::RParen)
+                if length.contains('.') =>
+            {
+                (word.clone(), length.clone())
+            }
+            _ => return None,
+        };
+        let span = self.peek_token_ref().span;
+        for _ in 0..4 {
+            self.advance_token();
+        }
+        Some(DataType::Custom(
+            ObjectName::from(vec![word.into_ident(span)]),
+            vec![length],
+        ))
     }
 
     fn is_zerofill_allowed(&self, token_index: usize) -> bool {

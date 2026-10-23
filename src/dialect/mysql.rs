@@ -212,6 +212,10 @@ impl Dialect for MySqlDialect {
         true
     }
 
+    fn supports_decimal_type_length(&self) -> bool {
+        true
+    }
+
     fn supports_national_character_types(&self) -> bool {
         true
     }
