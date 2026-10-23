@@ -1962,6 +1962,37 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_column_binary_attribute() {
+    let sql = "CREATE TABLE t (a CHAR(60) BINARY DEFAULT '' NOT NULL, b VARCHAR(10) CHARACTER SET latin1 BINARY)";
+    match mysql_and_generic().verified_stmt(sql) {
+        Statement::CreateTable(CreateTable { columns, .. }) => {
+            assert_eq!(
+                vec![
+                    ColumnOption::Binary,
+                    ColumnOption::Default(Expr::value(Value::SingleQuotedString(String::new()))),
+                    ColumnOption::NotNull,
+                ],
+                columns[0]
+                    .options
+                    .iter()
+                    .map(|o| o.option.clone())
+                    .collect::<Vec<_>>()
+            );
+            assert_eq!(ColumnOption::Binary, columns[1].options[1].option);
+        }
+        _ => unreachable!(),
+    }
+    mysql_and_generic().verified_stmt("ALTER TABLE t MODIFY COLUMN a VARCHAR(10) BINARY NOT NULL");
+    assert_eq!(
+        all_dialects_except(|d| d.supports_column_binary_attribute())
+            .parse_sql_statements("CREATE TABLE t (a CHAR(10) BINARY)"),
+        Err(ParserError::ParserError(
+            "Expected: ',' or ')' after column definition, found: BINARY".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 

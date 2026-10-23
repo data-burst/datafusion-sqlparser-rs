@@ -10001,6 +10001,10 @@ impl<'a> Parser<'a> {
             )))
         } else if self.parse_keyword(Keyword::INVISIBLE) {
             Ok(Some(ColumnOption::Invisible))
+        } else if self.dialect.supports_column_binary_attribute()
+            && self.parse_keyword(Keyword::BINARY)
+        {
+            Ok(Some(ColumnOption::Binary))
         } else {
             Ok(None)
         }

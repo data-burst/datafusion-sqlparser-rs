@@ -1740,6 +1740,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect accepts the `BINARY` attribute on a character
+    /// column, a shorthand for the binary collation of the column's character set.
+    ///
+    /// Example:
+    /// ```sql
+    /// CREATE TABLE t (c CHAR(10) BINARY);
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/string-type-syntax.html>
+    fn supports_column_binary_attribute(&self) -> bool {
+        false
+    }
+
     /// Returns true if the dialect supports the `INTERVAL` data type with [Postgres]-style options.
     ///
     /// Examples:
