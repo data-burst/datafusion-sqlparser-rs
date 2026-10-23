@@ -1734,6 +1734,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect accepts `[DEFAULT] CHARACTER SET` and
+    /// `[DEFAULT] COLLATE` options in `CREATE SCHEMA`, as in `CREATE DATABASE`.
+    ///
+    /// Example:
+    /// ```sql
+    /// CREATE SCHEMA s DEFAULT CHARACTER SET = utf8mb4 COLLATE utf8mb4_bin;
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/create-database.html>
+    fn supports_create_schema_charset(&self) -> bool {
+        false
+    }
+
     /// Returns true if this dialect accepts a parenthesized list of column and index
     /// definitions after `ALTER TABLE ... ADD [COLUMN]`.
     ///

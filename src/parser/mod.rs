@@ -5822,6 +5822,13 @@ impl<'a> Parser<'a> {
 
         let schema_name = self.parse_schema_name()?;
 
+        let (default_charset, default_collation) = if self.dialect.supports_create_schema_charset()
+        {
+            self.parse_default_charset_and_collation()?
+        } else {
+            (None, None)
+        };
+
         let default_collate_spec = if self.parse_keywords(&[Keyword::DEFAULT, Keyword::COLLATE]) {
             Some(self.parse_expr()?)
         } else {
@@ -5854,6 +5861,8 @@ impl<'a> Parser<'a> {
             options,
             default_collate_spec,
             clone,
+            default_charset,
+            default_collation,
         })
     }
 
@@ -5895,33 +5904,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        // Parse MySQL-style [DEFAULT] CHARACTER SET and [DEFAULT] COLLATE options
-        //
-        // Note: The docs only mention `CHARACTER SET`, but `CHARSET` is also supported.
-        // Furthermore, MySQL will only accept one character set, raising an error if there is more
-        // than one, but will accept multiple collations and use the last one.
-        //
-        // <https://dev.mysql.com/doc/refman/8.4/en/create-database.html>
-        let mut default_charset = None;
-        let mut default_collation = None;
-        loop {
-            let has_default = self.parse_keyword(Keyword::DEFAULT);
-            if default_charset.is_none() && self.parse_keywords(&[Keyword::CHARACTER, Keyword::SET])
-                || self.parse_keyword(Keyword::CHARSET)
-            {
-                let _ = self.consume_token(&Token::Eq);
-                default_charset = Some(self.parse_identifier()?.value);
-            } else if self.parse_keyword(Keyword::COLLATE) {
-                let _ = self.consume_token(&Token::Eq);
-                default_collation = Some(self.parse_identifier()?.value);
-            } else if has_default {
-                // DEFAULT keyword not followed by CHARACTER SET, CHARSET, or COLLATE
-                self.prev_token();
-                break;
-            } else {
-                break;
-            }
-        }
+        let (default_charset, default_collation) = self.parse_default_charset_and_collation()?;
 
         Ok(Statement::CreateDatabase {
             db_name,
@@ -5947,6 +5930,40 @@ impl<'a> Parser<'a> {
             with_tags: None,
             with_contacts: None,
         })
+    }
+
+    /// Parses MySQL-style `[DEFAULT] CHARACTER SET` and `[DEFAULT] COLLATE` options of
+    /// `CREATE DATABASE` and `CREATE SCHEMA`.
+    ///
+    /// Note: The docs only mention `CHARACTER SET`, but `CHARSET` is also supported.
+    /// Furthermore, MySQL will only accept one character set, raising an error if there is more
+    /// than one, but will accept multiple collations and use the last one.
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/create-database.html>
+    fn parse_default_charset_and_collation(
+        &mut self,
+    ) -> Result<(Option<String>, Option<String>), ParserError> {
+        let mut default_charset = None;
+        let mut default_collation = None;
+        loop {
+            let has_default = self.parse_keyword(Keyword::DEFAULT);
+            if default_charset.is_none() && self.parse_keywords(&[Keyword::CHARACTER, Keyword::SET])
+                || self.parse_keyword(Keyword::CHARSET)
+            {
+                let _ = self.consume_token(&Token::Eq);
+                default_charset = Some(self.parse_identifier()?.value);
+            } else if self.parse_keyword(Keyword::COLLATE) {
+                let _ = self.consume_token(&Token::Eq);
+                default_collation = Some(self.parse_identifier()?.value);
+            } else if has_default {
+                // DEFAULT keyword not followed by CHARACTER SET, CHARSET, or COLLATE
+                self.prev_token();
+                break;
+            } else {
+                break;
+            }
+        }
+        Ok((default_charset, default_collation))
     }
 
     /// Parse an optional `USING` clause for `CREATE FUNCTION`.
