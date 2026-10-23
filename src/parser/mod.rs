@@ -11335,6 +11335,8 @@ impl<'a> Parser<'a> {
             AlterTableOperation::SetLogged
         } else if self.parse_keywords(&[Keyword::SET, Keyword::UNLOGGED]) {
             AlterTableOperation::SetUnlogged
+        } else if let Some(options) = self.parse_optional_alter_table_options()? {
+            AlterTableOperation::TableOptions { options }
         } else {
             let mut options =
                 self.parse_options_with_keywords(&[Keyword::SET, Keyword::TBLPROPERTIES])?;
@@ -11355,6 +11357,21 @@ impl<'a> Parser<'a> {
             }
         };
         Ok(operation)
+    }
+
+    /// Parses whitespace-separated table options as one `ALTER TABLE` operation. A comma ends
+    /// the operation, so the options that follow it are the next operation.
+    fn parse_optional_alter_table_options(
+        &mut self,
+    ) -> Result<Option<Vec<SqlOption>>, ParserError> {
+        if !self.dialect.supports_alter_table_table_options() {
+            return Ok(None);
+        }
+        let mut options = vec![];
+        while let Some(option) = self.parse_plain_option()? {
+            options.push(option);
+        }
+        Ok((!options.is_empty()).then_some(options))
     }
 
     fn parse_set_data_type(&mut self, had_set: bool) -> Result<AlterColumnOperation, ParserError> {
