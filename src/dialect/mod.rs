@@ -1740,6 +1740,20 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect supports the national character types
+    /// `NATIONAL CHAR`, `NATIONAL VARCHAR`, `NCHAR VARCHAR` and their
+    /// `CHARACTER` and `VARYING` spellings.
+    ///
+    /// Example:
+    /// ```sql
+    /// CREATE TABLE t (a NATIONAL CHAR(10), b NCHAR VARCHAR(255));
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/charset-national.html>
+    fn supports_national_character_types(&self) -> bool {
+        false
+    }
+
     /// Returns true if the dialect supports the `INTERVAL` data type with [Postgres]-style options.
     ///
     /// Examples:

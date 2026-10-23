@@ -13167,6 +13167,43 @@ impl<'a> Parser<'a> {
                         Ok(DataType::Char(self.parse_optional_character_length()?))
                     }
                 }
+                Keyword::NATIONAL if dialect.supports_national_character_types() => {
+                    let data_type = match self.expect_one_of_keywords(&[
+                        Keyword::CHAR,
+                        Keyword::CHARACTER,
+                        Keyword::VARCHAR,
+                    ])? {
+                        Keyword::CHAR if self.parse_keyword(Keyword::VARYING) => {
+                            DataType::CharVarying(self.parse_optional_character_length()?)
+                        }
+                        Keyword::CHAR => DataType::Char(self.parse_optional_character_length()?),
+                        Keyword::CHARACTER if self.parse_keyword(Keyword::VARYING) => {
+                            DataType::CharacterVarying(self.parse_optional_character_length()?)
+                        }
+                        Keyword::CHARACTER => {
+                            DataType::Character(self.parse_optional_character_length()?)
+                        }
+                        _ => DataType::Varchar(self.parse_optional_character_length()?),
+                    };
+                    Ok(DataType::National(Box::new(data_type)))
+                }
+                Keyword::NCHAR
+                    if dialect.supports_national_character_types()
+                        && self
+                            .peek_one_of_keywords(&[Keyword::VARCHAR, Keyword::VARYING])
+                            .is_some() =>
+                {
+                    if self.parse_keyword(Keyword::VARCHAR) {
+                        Ok(DataType::NcharVarchar(
+                            self.parse_optional_character_length()?,
+                        ))
+                    } else {
+                        self.expect_keyword_is(Keyword::VARYING)?;
+                        Ok(DataType::NcharVarying(
+                            self.parse_optional_character_length()?,
+                        ))
+                    }
+                }
                 Keyword::CLOB => Ok(DataType::Clob(self.parse_optional_precision()?)),
                 Keyword::BINARY => Ok(DataType::Binary(self.parse_optional_precision()?)),
                 Keyword::VARBINARY => Ok(DataType::Varbinary(self.parse_optional_binary_length()?)),

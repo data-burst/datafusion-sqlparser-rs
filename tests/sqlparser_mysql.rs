@@ -1962,6 +1962,49 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_national_character_types() {
+    let sql = "CREATE TABLE t (a NATIONAL CHAR, b NATIONAL CHARACTER(10), c NATIONAL VARCHAR(255), d NATIONAL CHAR VARYING(255), e NATIONAL CHARACTER VARYING(255), f NCHAR VARCHAR(255), g NCHAR VARYING(10), h NCHAR(10))";
+    match mysql_and_generic().verified_stmt(sql) {
+        Statement::CreateTable(CreateTable { columns, .. }) => {
+            let length = |length| Some(CharacterLength::IntegerLength { length, unit: None });
+            assert_eq!(
+                vec![
+                    DataType::National(Box::new(DataType::Char(None))),
+                    DataType::National(Box::new(DataType::Character(length(10)))),
+                    DataType::National(Box::new(DataType::Varchar(length(255)))),
+                    DataType::National(Box::new(DataType::CharVarying(length(255)))),
+                    DataType::National(Box::new(DataType::CharacterVarying(length(255)))),
+                    DataType::NcharVarchar(length(255)),
+                    DataType::NcharVarying(length(10)),
+                    DataType::Custom(
+                        ObjectName::from(vec![Ident::new("NCHAR")]),
+                        vec!["10".to_string()]
+                    ),
+                ],
+                columns
+                    .iter()
+                    .map(|c| c.data_type.clone())
+                    .collect::<Vec<_>>()
+            );
+        }
+        _ => unreachable!(),
+    }
+    assert_eq!(
+        mysql_and_generic().parse_sql_statements("CREATE TABLE t (a NATIONAL TEXT)"),
+        Err(ParserError::ParserError(
+            "Expected: one of CHAR or CHARACTER or VARCHAR, found: TEXT".to_string()
+        ))
+    );
+    assert_eq!(
+        all_dialects_except(|d| d.supports_national_character_types())
+            .parse_sql_statements("CREATE TABLE t (a NCHAR VARYING(10))"),
+        Err(ParserError::ParserError(
+            "Expected: ',' or ')' after column definition, found: VARYING".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 

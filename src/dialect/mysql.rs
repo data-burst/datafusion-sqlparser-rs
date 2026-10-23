@@ -212,6 +212,10 @@ impl Dialect for MySqlDialect {
         true
     }
 
+    fn supports_national_character_types(&self) -> bool {
+        true
+    }
+
     fn supports_cross_join_constraint(&self) -> bool {
         true
     }

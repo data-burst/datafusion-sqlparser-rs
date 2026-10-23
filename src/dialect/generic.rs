@@ -249,6 +249,10 @@ impl Dialect for GenericDialect {
         true
     }
 
+    fn supports_national_character_types(&self) -> bool {
+        true
+    }
+
     fn supports_interval_options(&self) -> bool {
         true
     }
