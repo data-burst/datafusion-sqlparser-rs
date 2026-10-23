@@ -1734,6 +1734,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect drops partitions of a table by name, with a list
+    /// of partition names that is not parenthesized.
+    ///
+    /// Example:
+    /// ```sql
+    /// ALTER TABLE t DROP PARTITION p0, p1;
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/alter-table-partition-operations.html>
+    fn supports_drop_partition_names(&self) -> bool {
+        false
+    }
+
     /// Returns true if this dialect accepts table options, such as `ENGINE = InnoDB`
     /// or `COMMENT = 'text'`, as `ALTER TABLE` operations.
     ///

@@ -212,6 +212,10 @@ impl Dialect for MySqlDialect {
         true
     }
 
+    fn supports_drop_partition_names(&self) -> bool {
+        true
+    }
+
     fn supports_alter_table_table_options(&self) -> bool {
         true
     }
