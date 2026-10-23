@@ -9367,10 +9367,10 @@ impl<'a> Parser<'a> {
             let value = self.next_token();
 
             let comment = match (has_eq, value.token) {
-                (true, Token::SingleQuotedString(s)) => {
+                (true, Token::SingleQuotedString(s) | Token::DoubleQuotedString(s)) => {
                     Ok(Some(SqlOption::Comment(CommentDef::WithEq(s))))
                 }
-                (false, Token::SingleQuotedString(s)) => {
+                (false, Token::SingleQuotedString(s) | Token::DoubleQuotedString(s)) => {
                     Ok(Some(SqlOption::Comment(CommentDef::WithoutEq(s))))
                 }
                 (_, token) => {
@@ -9580,7 +9580,7 @@ impl<'a> Parser<'a> {
     pub fn parse_comment_value(&mut self) -> Result<String, ParserError> {
         let next_token = self.next_token();
         let value = match next_token.token {
-            Token::SingleQuotedString(str) => str,
+            Token::SingleQuotedString(str) | Token::DoubleQuotedString(str) => str,
             Token::DollarQuotedString(str) => str.value,
             _ => self.expected("string literal", next_token)?,
         };
