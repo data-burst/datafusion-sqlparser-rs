@@ -10904,6 +10904,17 @@ impl<'a> Parser<'a> {
                 } else {
                     let column_keyword = self.parse_keyword(Keyword::COLUMN);
 
+                    if self.dialect.supports_alter_table_add_column_list()
+                        && self.peek_token_ref().token == Token::LParen
+                    {
+                        let (columns, constraints) = self.parse_columns()?;
+                        return Ok(AlterTableOperation::AddColumns {
+                            column_keyword,
+                            columns,
+                            constraints,
+                        });
+                    }
+
                     let if_not_exists = if self.dialect.supports_add_column_if_not_exists() {
                         self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS])
                             || if_not_exists

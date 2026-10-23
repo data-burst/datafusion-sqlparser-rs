@@ -1740,6 +1740,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect accepts a parenthesized list of column and index
+    /// definitions after `ALTER TABLE ... ADD [COLUMN]`.
+    ///
+    /// Example:
+    /// ```sql
+    /// ALTER TABLE t ADD (a INT, b INT, PRIMARY KEY (a));
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/alter-table.html>
+    fn supports_alter_table_add_column_list(&self) -> bool {
+        false
+    }
+
     /// Returns true if the dialect supports the `INTERVAL` data type with [Postgres]-style options.
     ///
     /// Examples:

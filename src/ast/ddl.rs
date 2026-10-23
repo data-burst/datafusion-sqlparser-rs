@@ -143,6 +143,17 @@ pub enum AlterTableOperation {
         /// MySQL `ALTER TABLE` only  [FIRST | AFTER column_name]
         column_position: Option<MySQLColumnPosition>,
     },
+    /// `ADD [COLUMN] (<column_def>, ... [, <table_constraint>, ...])`
+    ///
+    /// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/alter-table.html)
+    AddColumns {
+        /// `[COLUMN]`.
+        column_keyword: bool,
+        /// The column definitions in the list.
+        columns: Vec<ColumnDef>,
+        /// The index and constraint definitions in the list.
+        constraints: Vec<TableConstraint>,
+    },
     /// `ADD PROJECTION [IF NOT EXISTS] name ( SELECT <COLUMN LIST EXPR> [GROUP BY] [ORDER BY])`
     ///
     /// Note: this is a ClickHouse-specific operation.
@@ -759,6 +770,21 @@ impl fmt::Display for AlterTableOperation {
                 }
 
                 Ok(())
+            }
+            AlterTableOperation::AddColumns {
+                column_keyword,
+                columns,
+                constraints,
+            } => {
+                write!(f, "ADD")?;
+                if *column_keyword {
+                    write!(f, " COLUMN")?;
+                }
+                write!(f, " ({}", display_comma_separated(columns))?;
+                if !columns.is_empty() && !constraints.is_empty() {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{})", display_comma_separated(constraints))
             }
             AlterTableOperation::AddProjection {
                 if_not_exists,
