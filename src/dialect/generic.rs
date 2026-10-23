@@ -245,6 +245,10 @@ impl Dialect for GenericDialect {
         true
     }
 
+    fn supports_serial_default_value(&self) -> bool {
+        true
+    }
+
     fn supports_column_binary_attribute(&self) -> bool {
         true
     }

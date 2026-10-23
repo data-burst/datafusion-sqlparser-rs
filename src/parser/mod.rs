@@ -9922,6 +9922,14 @@ impl<'a> Parser<'a> {
             Ok(Some(ColumnOption::DialectSpecific(vec![
                 Token::make_keyword("AUTO_INCREMENT"),
             ])))
+        } else if self.dialect.supports_serial_default_value()
+            && self.parse_keywords(&[Keyword::SERIAL, Keyword::DEFAULT, Keyword::VALUE])
+        {
+            Ok(Some(ColumnOption::DialectSpecific(vec![
+                Token::make_keyword("SERIAL"),
+                Token::make_keyword("DEFAULT"),
+                Token::make_keyword("VALUE"),
+            ])))
         } else if self.parse_keyword(Keyword::AUTOINCREMENT)
             && dialect_of!(self is SQLiteDialect |  GenericDialect)
         {

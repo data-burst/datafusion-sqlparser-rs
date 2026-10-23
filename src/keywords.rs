@@ -951,6 +951,7 @@ define_keywords!(
     SEQUENCES,
     SERDE,
     SERDEPROPERTIES,
+    SERIAL,
     SERIALIZABLE,
     SERVER,
     SERVICE,
