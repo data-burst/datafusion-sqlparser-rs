@@ -1734,6 +1734,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect accepts table options, such as `ENGINE = InnoDB`
+    /// or `COMMENT = 'text'`, as `ALTER TABLE` operations.
+    ///
+    /// Example:
+    /// ```sql
+    /// ALTER TABLE t ENGINE = InnoDB COMMENT = 'text';
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/alter-table.html>
+    fn supports_alter_table_table_options(&self) -> bool {
+        false
+    }
+
     /// Returns true if this dialect accepts a decimal number as the length of a
     /// data type, such as `FLOAT(7.4)` or `DECIMAL(19.5)`. The type is parsed as a
     /// [`DataType::Custom`] that keeps the length as written.

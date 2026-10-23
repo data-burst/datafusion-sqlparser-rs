@@ -212,6 +212,10 @@ impl Dialect for MySqlDialect {
         true
     }
 
+    fn supports_alter_table_table_options(&self) -> bool {
+        true
+    }
+
     fn supports_decimal_type_length(&self) -> bool {
         true
     }

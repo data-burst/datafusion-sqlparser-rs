@@ -2161,6 +2161,55 @@ fn parse_double_quoted_comment() {
 }
 
 #[test]
+fn parse_alter_table_table_options() {
+    match alter_table_op_with_name(
+        mysql_and_generic()
+            .verified_stmt("ALTER TABLE t1 STATS_AUTO_RECALC = DEFAULT STATS_SAMPLE_PAGES = 50"),
+        "t1",
+    ) {
+        AlterTableOperation::TableOptions { options } => assert_eq!(
+            vec![
+                SqlOption::KeyValue {
+                    key: Ident::new("STATS_AUTO_RECALC"),
+                    value: Expr::Identifier(Ident::new("DEFAULT")),
+                },
+                SqlOption::KeyValue {
+                    key: Ident::new("STATS_SAMPLE_PAGES"),
+                    value: Expr::value(number("50")),
+                },
+            ],
+            options
+        ),
+        op => panic!("unexpected operation {op:?}"),
+    }
+
+    match mysql_and_generic()
+        .verified_stmt("ALTER TABLE t1 STATS_AUTO_RECALC = DEFAULT, STATS_SAMPLE_PAGES = 50")
+    {
+        Statement::AlterTable(AlterTable { operations, .. }) => assert_eq!(2, operations.len()),
+        _ => unreachable!(),
+    }
+    mysql_and_generic().verified_stmt("ALTER TABLE t ENGINE = InnoDB");
+    mysql_and_generic().verified_stmt("ALTER TABLE t COMMENT = 'alter table comment'");
+    mysql_and_generic().verified_stmt("ALTER TABLE t UNION = (t1, t2)");
+    mysql_and_generic()
+        .verified_stmt("ALTER TABLE t DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin");
+    mysql_and_generic()
+        .verified_stmt("ALTER TABLE t ADD COLUMN c INT, ENGINE = InnoDB, DROP COLUMN d");
+    mysql_and_generic().one_statement_parses_to(
+        "ALTER TABLE t ENGINE=InnoDB",
+        "ALTER TABLE t ENGINE = InnoDB",
+    );
+    assert_eq!(
+        all_dialects_except(|d| d.supports_alter_table_table_options())
+            .parse_sql_statements("ALTER TABLE t COMMENT = 'text'"),
+        Err(ParserError::ParserError(
+            "Expected: ADD, RENAME, PARTITION, SWAP, DROP, REPLICA IDENTITY, SET, or SET TBLPROPERTIES after ALTER TABLE, found: COMMENT".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 

@@ -550,6 +550,17 @@ pub enum AlterTableOperation {
         /// Parenthesized options supplied to `SET (...)`.
         options: Vec<SqlOption>,
     },
+    /// Table options separated by whitespace, as in `CREATE TABLE`.
+    ///
+    /// Example:
+    /// ```sql
+    /// ALTER TABLE t ENGINE = InnoDB COMMENT = 'text'
+    /// ```
+    /// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/alter-table.html)
+    TableOptions {
+        /// The table options, in the order written.
+        options: Vec<SqlOption>,
+    },
 }
 
 /// An `ALTER Policy` (`Statement::AlterPolicy`) operation
@@ -1068,6 +1079,9 @@ impl fmt::Display for AlterTableOperation {
             }
             AlterTableOperation::SetOptionsParens { options } => {
                 write!(f, "SET ({})", display_comma_separated(options))
+            }
+            AlterTableOperation::TableOptions { options } => {
+                write!(f, "{}", display_separated(options, " "))
             }
         }
     }
