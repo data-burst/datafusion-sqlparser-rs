@@ -2028,6 +2028,27 @@ fn parse_serial_default_value() {
 }
 
 #[test]
+fn parse_column_charset_synonym() {
+    let canonical = "CREATE TABLE t (a VARCHAR(255) CHARACTER SET latin2 NOT NULL, b LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin)";
+    match mysql_and_generic().one_statement_parses_to(
+        "CREATE TABLE t (a VARCHAR(255) charset latin2 NOT NULL, b LONGTEXT CHARSET utf8mb4 COLLATE utf8mb4_bin)",
+        canonical,
+    ) {
+        Statement::CreateTable(CreateTable { columns, .. }) => {
+            assert_eq!(
+                ColumnOption::CharacterSet(ObjectName::from(vec![Ident::new("latin2")])),
+                columns[0].options[0].option
+            );
+        }
+        _ => unreachable!(),
+    }
+    mysql_and_generic().one_statement_parses_to(
+        "ALTER TABLE t MODIFY col1 VARCHAR(75) CHARSET utf8",
+        "ALTER TABLE t MODIFY COLUMN col1 VARCHAR(75) CHARACTER SET utf8",
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 
