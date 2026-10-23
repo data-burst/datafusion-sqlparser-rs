@@ -11585,6 +11585,19 @@ impl<'a> Parser<'a> {
             AlterTableOperation::SetLogged
         } else if self.parse_keywords(&[Keyword::SET, Keyword::UNLOGGED]) {
             AlterTableOperation::SetUnlogged
+        } else if self.dialect.supports_alter_table_convert_to_charset()
+            && self.parse_keywords(&[Keyword::CONVERT, Keyword::TO])
+        {
+            if !self.parse_keyword(Keyword::CHARSET) {
+                self.expect_keywords(&[Keyword::CHARACTER, Keyword::SET])?;
+            }
+            let charset = self.parse_identifier()?;
+            let collation = if self.parse_keyword(Keyword::COLLATE) {
+                Some(self.parse_identifier()?)
+            } else {
+                None
+            };
+            AlterTableOperation::ConvertToCharset { charset, collation }
         } else if let Some(options) = self.parse_optional_alter_table_options()? {
             AlterTableOperation::TableOptions { options }
         } else {

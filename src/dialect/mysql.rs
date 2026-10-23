@@ -212,6 +212,10 @@ impl Dialect for MySqlDialect {
         true
     }
 
+    fn supports_alter_table_convert_to_charset(&self) -> bool {
+        true
+    }
+
     fn supports_alter_table_rename_without_keyword(&self) -> bool {
         true
     }

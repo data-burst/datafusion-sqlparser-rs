@@ -1734,6 +1734,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect supports `ALTER TABLE ... CONVERT TO CHARACTER SET`,
+    /// which changes the character set of the table and of all its character columns.
+    ///
+    /// Example:
+    /// ```sql
+    /// ALTER TABLE t CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/alter-table.html>
+    fn supports_alter_table_convert_to_charset(&self) -> bool {
+        false
+    }
+
     /// Returns true if this dialect accepts `ALTER TABLE ... RENAME new_name`, where
     /// the `TO` or `AS` keyword before the new table name is omitted.
     ///

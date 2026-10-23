@@ -1217,6 +1217,9 @@ impl Spanned for AlterTableOperation {
                 partitions,
                 if_exists: _,
             } => union_spans(partitions.iter().map(|i| i.span())),
+            AlterTableOperation::ConvertToCharset { charset, collation } => {
+                charset.span.union_opt(&collation.as_ref().map(|c| c.span))
+            }
             AlterTableOperation::DropPartitionNames { names } => {
                 union_spans(names.iter().map(|i| i.span))
             }
