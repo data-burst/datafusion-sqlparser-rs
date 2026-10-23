@@ -212,6 +212,10 @@ impl Dialect for MySqlDialect {
         true
     }
 
+    fn supports_alter_table_add_column_list(&self) -> bool {
+        true
+    }
+
     fn supports_partition_by_table_option(&self) -> bool {
         true
     }

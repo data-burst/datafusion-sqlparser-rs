@@ -2333,6 +2333,52 @@ fn parse_create_table_partition_by() {
 }
 
 #[test]
+fn parse_alter_table_add_column_list() {
+    let sql = "ALTER TABLE t ADD COLUMN (created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, c TIME NOT NULL DEFAULT '08:00')";
+    match alter_table_op_with_name(mysql_and_generic().verified_stmt(sql), "t") {
+        AlterTableOperation::AddColumns {
+            column_keyword,
+            columns,
+            constraints,
+        } => {
+            assert!(column_keyword);
+            assert_eq!(
+                vec![Ident::new("created"), Ident::new("c")],
+                columns.iter().map(|c| c.name.clone()).collect::<Vec<_>>()
+            );
+            assert!(constraints.is_empty());
+        }
+        op => panic!("unexpected operation {op:?}"),
+    }
+    match alter_table_op_with_name(
+        mysql_and_generic().verified_stmt(
+            "ALTER TABLE t ADD (k_id INT UNSIGNED NOT NULL, PRIMARY KEY id (id), INDEX k_id (k_id))",
+        ),
+        "t",
+    ) {
+        AlterTableOperation::AddColumns {
+            column_keyword,
+            columns,
+            constraints,
+        } => {
+            assert!(!column_keyword);
+            assert_eq!(1, columns.len());
+            assert_eq!(2, constraints.len());
+        }
+        op => panic!("unexpected operation {op:?}"),
+    }
+    mysql_and_generic()
+        .verified_stmt("ALTER TABLE t ADD COLUMN (UNIQUE KEY another_field (another_field))");
+    assert_eq!(
+        all_dialects_except(|d| d.supports_alter_table_add_column_list())
+            .parse_sql_statements("ALTER TABLE t ADD (a INT)"),
+        Err(ParserError::ParserError(
+            "Expected: identifier, found: (".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 
