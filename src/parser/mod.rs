@@ -9360,6 +9360,15 @@ impl<'a> Parser<'a> {
             return Ok(Some(SqlOption::Ident(Ident::new("START TRANSACTION"))));
         }
 
+        // <https://dev.mysql.com/doc/refman/8.4/en/create-table.html#create-table-partitioning>
+        if self.dialect.supports_partition_by_table_option()
+            && self.parse_keywords(&[Keyword::PARTITION, Keyword::BY])
+        {
+            return Ok(Some(SqlOption::Partitioning(Box::new(
+                self.parse_table_partitioning()?,
+            ))));
+        }
+
         // Custom option
         // <https://dev.mysql.com/doc/refman/8.4/en/create-table.html>
         if self.parse_keywords(&[Keyword::COMMENT]) {
@@ -9544,6 +9553,171 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Some(SqlOption::KeyValue { key, value }))
+    }
+
+    /// Parses the partitioning options that follow `PARTITION BY`.
+    fn parse_table_partitioning(&mut self) -> Result<TablePartitioning, ParserError> {
+        let method = self.parse_partition_method()?;
+        let partitions = if self.parse_keyword(Keyword::PARTITIONS) {
+            Some(self.parse_literal_uint()?)
+        } else {
+            None
+        };
+        let subpartition_by = if self.parse_keywords(&[Keyword::SUBPARTITION, Keyword::BY]) {
+            match self.parse_partition_method()? {
+                method @ (PartitionMethod::Hash { .. } | PartitionMethod::Key { .. }) => {
+                    Some(method)
+                }
+                _ => {
+                    return parser_err!(
+                        "Expected: HASH or KEY after SUBPARTITION BY",
+                        self.peek_token_ref().span.start
+                    )
+                }
+            }
+        } else {
+            None
+        };
+        let subpartitions = if self.parse_keyword(Keyword::SUBPARTITIONS) {
+            Some(self.parse_literal_uint()?)
+        } else {
+            None
+        };
+        let definitions = if self.consume_token(&Token::LParen) {
+            let definitions = self.parse_comma_separated(Parser::parse_partition_definition)?;
+            self.expect_token(&Token::RParen)?;
+            definitions
+        } else {
+            vec![]
+        };
+        Ok(TablePartitioning {
+            method,
+            partitions,
+            subpartition_by,
+            subpartitions,
+            definitions,
+        })
+    }
+
+    fn parse_partition_method(&mut self) -> Result<PartitionMethod, ParserError> {
+        let linear = self.parse_keyword(Keyword::LINEAR);
+        if self.parse_keyword(Keyword::HASH) {
+            self.expect_token(&Token::LParen)?;
+            let expr = self.parse_expr()?;
+            self.expect_token(&Token::RParen)?;
+            return Ok(PartitionMethod::Hash {
+                linear,
+                expr: Box::new(expr),
+            });
+        }
+        if self.parse_keyword(Keyword::KEY) {
+            let algorithm = if self.parse_keyword(Keyword::ALGORITHM) {
+                let _ = self.consume_token(&Token::Eq);
+                Some(self.parse_literal_uint()?)
+            } else {
+                None
+            };
+            let columns = self.parse_parenthesized_column_list(IsOptional::Mandatory, true)?;
+            return Ok(PartitionMethod::Key {
+                linear,
+                algorithm,
+                columns,
+            });
+        }
+        if linear {
+            return self.expected_ref("HASH or KEY after LINEAR", self.peek_token_ref());
+        }
+        match self.parse_one_of_keywords(&[Keyword::RANGE, Keyword::LIST]) {
+            Some(Keyword::RANGE) => Ok(PartitionMethod::Range(self.parse_partition_keys()?)),
+            Some(Keyword::LIST) => Ok(PartitionMethod::List(self.parse_partition_keys()?)),
+            _ => self.expected_ref("HASH, KEY, RANGE or LIST", self.peek_token_ref()),
+        }
+    }
+
+    fn parse_partition_keys(&mut self) -> Result<PartitionKeys, ParserError> {
+        if self.parse_keyword(Keyword::COLUMNS) {
+            return Ok(PartitionKeys::Columns(
+                self.parse_parenthesized_column_list(IsOptional::Mandatory, false)?,
+            ));
+        }
+        self.expect_token(&Token::LParen)?;
+        let expr = self.parse_expr()?;
+        self.expect_token(&Token::RParen)?;
+        Ok(PartitionKeys::Expr(Box::new(expr)))
+    }
+
+    fn parse_partition_definition(&mut self) -> Result<PartitionDefinition, ParserError> {
+        self.expect_keyword_is(Keyword::PARTITION)?;
+        let name = self.parse_identifier()?;
+        let values = if !self.parse_keyword(Keyword::VALUES) {
+            None
+        } else if self.parse_keywords(&[Keyword::LESS, Keyword::THAN]) {
+            if self.parse_keyword(Keyword::MAXVALUE) {
+                Some(PartitionValues::LessThanMaxValue)
+            } else {
+                self.expect_token(&Token::LParen)?;
+                let values = self.parse_comma_separated(Parser::parse_partition_bound_value)?;
+                self.expect_token(&Token::RParen)?;
+                Some(PartitionValues::LessThan(values))
+            }
+        } else {
+            self.expect_keyword_is(Keyword::IN)?;
+            self.expect_token(&Token::LParen)?;
+            let values = self.parse_comma_separated(Parser::parse_expr)?;
+            self.expect_token(&Token::RParen)?;
+            Some(PartitionValues::In(values))
+        };
+        let options = self.parse_partition_definition_options()?;
+        let subpartitions = if self.consume_token(&Token::LParen) {
+            let subpartitions =
+                self.parse_comma_separated(Parser::parse_subpartition_definition)?;
+            self.expect_token(&Token::RParen)?;
+            subpartitions
+        } else {
+            vec![]
+        };
+        Ok(PartitionDefinition {
+            name,
+            values,
+            options,
+            subpartitions,
+        })
+    }
+
+    fn parse_subpartition_definition(&mut self) -> Result<SubpartitionDefinition, ParserError> {
+        self.expect_keyword_is(Keyword::SUBPARTITION)?;
+        let name = self.parse_identifier()?;
+        let options = self.parse_partition_definition_options()?;
+        Ok(SubpartitionDefinition { name, options })
+    }
+
+    /// Parses the whitespace-separated options of a partition, such as `ENGINE = InnoDB`.
+    fn parse_partition_definition_options(&mut self) -> Result<Vec<SqlOption>, ParserError> {
+        let mut options = vec![];
+        loop {
+            // Parsed here because a table's `ENGINE` option may take parenthesized parameters,
+            // which would swallow the subpartition list that can follow a partition's engine.
+            let engine_key = if self.parse_keywords(&[Keyword::STORAGE, Keyword::ENGINE]) {
+                Some("STORAGE ENGINE")
+            } else if self.parse_keyword(Keyword::ENGINE) {
+                Some("ENGINE")
+            } else {
+                None
+            };
+            if let Some(key) = engine_key {
+                let _ = self.consume_token(&Token::Eq);
+                options.push(SqlOption::NamedParenthesizedList(NamedParenthesizedList {
+                    key: Ident::new(key),
+                    name: Some(self.parse_identifier()?),
+                    values: vec![],
+                }));
+                continue;
+            }
+            match self.parse_plain_option()? {
+                Some(option) => options.push(option),
+                None => return Ok(options),
+            }
+        }
     }
 
     /// Parse plain options.

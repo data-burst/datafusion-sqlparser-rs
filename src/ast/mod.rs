@@ -81,11 +81,13 @@ pub use self::ddl::{
     IdentityPropertyFormatKind, IdentityPropertyKind, IdentityPropertyOrder, IndexColumn,
     IndexOption, IndexType, KeyOrIndexDisplay, Msck, NullsDistinctOption, OperatorArgTypes,
     OperatorClassItem, OperatorFamilyDropItem, OperatorFamilyItem, OperatorOption, OperatorPurpose,
-    Owner, Partition, PartitionBoundValue, ProcedureParam, ReferentialAction, RenameTableNameKind,
-    ReplicaIdentity, SqliteTableOption, SqliteTableOptions, TagsColumnOption, TextSearchObjectType,
-    TriggerObjectKind, Truncate, UserDefinedTypeCompositeAttributeDef,
-    UserDefinedTypeInternalLength, UserDefinedTypeRangeOption, UserDefinedTypeRepresentation,
-    UserDefinedTypeSqlDefinitionOption, UserDefinedTypeStorage, ViewColumnDef, WithData,
+    Owner, Partition, PartitionBoundValue, PartitionDefinition, PartitionKeys, PartitionMethod,
+    PartitionValues, ProcedureParam, ReferentialAction, RenameTableNameKind, ReplicaIdentity,
+    SqliteTableOption, SqliteTableOptions, SubpartitionDefinition, TablePartitioning,
+    TagsColumnOption, TextSearchObjectType, TriggerObjectKind, Truncate,
+    UserDefinedTypeCompositeAttributeDef, UserDefinedTypeInternalLength,
+    UserDefinedTypeRangeOption, UserDefinedTypeRepresentation, UserDefinedTypeSqlDefinitionOption,
+    UserDefinedTypeStorage, ViewColumnDef, WithData,
 };
 pub use self::dml::{
     Delete, Insert, InsertOverriding, Merge, MergeAction, MergeClause, MergeClauseKind,
@@ -9082,6 +9084,9 @@ pub enum SqlOption {
     /// MySQL TableSpace option
     /// <https://dev.mysql.com/doc/refman/8.4/en/create-table.html>
     TableSpace(TablespaceOption),
+    /// MySQL `PARTITION BY` partitioning options
+    /// <https://dev.mysql.com/doc/refman/8.4/en/create-table.html#create-table-partitioning>
+    Partitioning(Box<TablePartitioning>),
     /// An option representing a key value pair, where the value is a parenthesized list and with an optional name
     /// e.g.
     ///
@@ -9128,6 +9133,7 @@ impl fmt::Display for SqlOption {
                     None => Ok(()),
                 }
             }
+            SqlOption::Partitioning(partitioning) => write!(f, "{partitioning}"),
             SqlOption::Comment(comment) => match comment {
                 CommentDef::WithEq(comment) => {
                     write!(f, "COMMENT = '{comment}'")

@@ -1062,6 +1062,7 @@ impl Spanned for SqlOption {
                 core::iter::once(column_name.span).chain(for_values.iter().map(|i| i.span())),
             ),
             SqlOption::TableSpace(_) => Span::empty(),
+            SqlOption::Partitioning(_) => Span::empty(),
             SqlOption::Comment(_) => Span::empty(),
             SqlOption::NamedParenthesizedList(NamedParenthesizedList {
                 key: name,

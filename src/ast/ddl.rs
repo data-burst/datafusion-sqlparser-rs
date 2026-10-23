@@ -3590,6 +3590,196 @@ impl fmt::Display for PartitionBoundValue {
     }
 }
 
+/// Partitioning options of a table: `PARTITION BY <method> [PARTITIONS <n>]
+/// [SUBPARTITION BY <method> [SUBPARTITIONS <n>]] [(<partition_definition>, ...)]`.
+///
+/// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/create-table.html#create-table-partitioning)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct TablePartitioning {
+    /// How rows are assigned to partitions.
+    pub method: PartitionMethod,
+    /// `PARTITIONS <n>`
+    pub partitions: Option<u64>,
+    /// `SUBPARTITION BY <method>`
+    pub subpartition_by: Option<PartitionMethod>,
+    /// `SUBPARTITIONS <n>`
+    pub subpartitions: Option<u64>,
+    /// The parenthesized partition definitions, empty when absent.
+    pub definitions: Vec<PartitionDefinition>,
+}
+
+impl fmt::Display for TablePartitioning {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PARTITION BY {}", self.method)?;
+        if let Some(partitions) = self.partitions {
+            write!(f, " PARTITIONS {partitions}")?;
+        }
+        if let Some(subpartition_by) = &self.subpartition_by {
+            write!(f, " SUBPARTITION BY {subpartition_by}")?;
+        }
+        if let Some(subpartitions) = self.subpartitions {
+            write!(f, " SUBPARTITIONS {subpartitions}")?;
+        }
+        if !self.definitions.is_empty() {
+            write!(f, " ({})", display_comma_separated(&self.definitions))?;
+        }
+        Ok(())
+    }
+}
+
+/// The partitioning function of [`TablePartitioning`].
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum PartitionMethod {
+    /// `[LINEAR] HASH (<expr>)`
+    Hash {
+        /// `LINEAR` was given.
+        linear: bool,
+        /// The hashed expression.
+        expr: Box<Expr>,
+    },
+    /// `[LINEAR] KEY [ALGORITHM = <n>] (<column>, ...)`
+    Key {
+        /// `LINEAR` was given.
+        linear: bool,
+        /// `ALGORITHM = <n>`
+        algorithm: Option<u64>,
+        /// The key columns; empty means the primary key.
+        columns: Vec<Ident>,
+    },
+    /// `RANGE (<expr>)` or `RANGE COLUMNS (<column>, ...)`
+    Range(PartitionKeys),
+    /// `LIST (<expr>)` or `LIST COLUMNS (<column>, ...)`
+    List(PartitionKeys),
+}
+
+impl fmt::Display for PartitionMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let linear = |linear: &bool| if *linear { "LINEAR " } else { "" };
+        match self {
+            PartitionMethod::Hash { linear: l, expr } => write!(f, "{}HASH ({expr})", linear(l)),
+            PartitionMethod::Key {
+                linear: l,
+                algorithm,
+                columns,
+            } => {
+                write!(f, "{}KEY", linear(l))?;
+                if let Some(algorithm) = algorithm {
+                    write!(f, " ALGORITHM = {algorithm}")?;
+                }
+                write!(f, " ({})", display_comma_separated(columns))
+            }
+            PartitionMethod::Range(keys) => write!(f, "RANGE {keys}"),
+            PartitionMethod::List(keys) => write!(f, "LIST {keys}"),
+        }
+    }
+}
+
+/// The partitioning key of a `RANGE` or `LIST` [`PartitionMethod`].
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum PartitionKeys {
+    /// `(<expr>)`
+    Expr(Box<Expr>),
+    /// `COLUMNS (<column>, ...)`
+    Columns(Vec<Ident>),
+}
+
+impl fmt::Display for PartitionKeys {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PartitionKeys::Expr(expr) => write!(f, "({expr})"),
+            PartitionKeys::Columns(columns) => {
+                write!(f, "COLUMNS ({})", display_comma_separated(columns))
+            }
+        }
+    }
+}
+
+/// One partition of [`TablePartitioning`]:
+/// `PARTITION <name> [VALUES ...] [<option> ...] [(<subpartition>, ...)]`.
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct PartitionDefinition {
+    /// The partition name.
+    pub name: Ident,
+    /// The `VALUES` clause.
+    pub values: Option<PartitionValues>,
+    /// Options such as `ENGINE = InnoDB` or `COMMENT = 'text'`.
+    pub options: Vec<SqlOption>,
+    /// The parenthesized subpartition definitions, empty when absent.
+    pub subpartitions: Vec<SubpartitionDefinition>,
+}
+
+impl fmt::Display for PartitionDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PARTITION {}", self.name)?;
+        if let Some(values) = &self.values {
+            write!(f, " {values}")?;
+        }
+        if !self.options.is_empty() {
+            write!(f, " {}", display_separated(&self.options, " "))?;
+        }
+        if !self.subpartitions.is_empty() {
+            write!(f, " ({})", display_comma_separated(&self.subpartitions))?;
+        }
+        Ok(())
+    }
+}
+
+/// The `VALUES` clause of a [`PartitionDefinition`].
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum PartitionValues {
+    /// `VALUES LESS THAN (<value>, ...)`
+    LessThan(Vec<PartitionBoundValue>),
+    /// `VALUES LESS THAN MAXVALUE`
+    LessThanMaxValue,
+    /// `VALUES IN (<value>, ...)`
+    In(Vec<Expr>),
+}
+
+impl fmt::Display for PartitionValues {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PartitionValues::LessThan(values) => {
+                write!(f, "VALUES LESS THAN ({})", display_comma_separated(values))
+            }
+            PartitionValues::LessThanMaxValue => write!(f, "VALUES LESS THAN MAXVALUE"),
+            PartitionValues::In(values) => {
+                write!(f, "VALUES IN ({})", display_comma_separated(values))
+            }
+        }
+    }
+}
+
+/// One subpartition of a [`PartitionDefinition`]: `SUBPARTITION <name> [<option> ...]`.
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct SubpartitionDefinition {
+    /// The subpartition name.
+    pub name: Ident,
+    /// Options such as `ENGINE = InnoDB` or `COMMENT = 'text'`.
+    pub options: Vec<SqlOption>,
+}
+
+impl fmt::Display for SubpartitionDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "SUBPARTITION {}", self.name)?;
+        if !self.options.is_empty() {
+            write!(f, " {}", display_separated(&self.options, " "))?;
+        }
+        Ok(())
+    }
+}
+
 /// Redshift distribution style for `CREATE TABLE`.
 ///
 /// See [Redshift](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_NEW.html)
