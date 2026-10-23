@@ -2026,6 +2026,14 @@ pub enum ColumnOption {
     /// ```
     /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/invisible-columns.html
     Invisible,
+    /// MySQL specific: `BINARY` attribute of a character column, which selects the binary
+    /// collation of the column's character set.
+    /// Syntax:
+    /// ```sql
+    /// CREATE TABLE t (c CHAR(10) BINARY);
+    /// ```
+    /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/string-type-syntax.html
+    Binary,
 }
 
 impl From<UniqueConstraint> for ColumnOption {
@@ -2174,6 +2182,7 @@ impl fmt::Display for ColumnOption {
             Invisible => {
                 write!(f, "INVISIBLE")
             }
+            Binary => write!(f, "BINARY"),
         }
     }
 }
