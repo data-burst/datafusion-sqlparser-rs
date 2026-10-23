@@ -9082,6 +9082,9 @@ pub enum SqlOption {
     /// MySQL TableSpace option
     /// <https://dev.mysql.com/doc/refman/8.4/en/create-table.html>
     TableSpace(TablespaceOption),
+    /// MySQL `STORAGE { DISK | MEMORY }` table option
+    /// <https://dev.mysql.com/doc/refman/8.4/en/create-table.html>
+    Storage(StorageType),
     /// An option representing a key value pair, where the value is a parenthesized list and with an optional name
     /// e.g.
     ///
@@ -9128,6 +9131,8 @@ impl fmt::Display for SqlOption {
                     None => Ok(()),
                 }
             }
+            SqlOption::Storage(StorageType::Disk) => write!(f, "STORAGE DISK"),
+            SqlOption::Storage(StorageType::Memory) => write!(f, "STORAGE MEMORY"),
             SqlOption::Comment(comment) => match comment {
                 CommentDef::WithEq(comment) => {
                     write!(f, "COMMENT = '{comment}'")

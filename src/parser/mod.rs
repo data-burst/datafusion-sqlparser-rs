@@ -9448,6 +9448,22 @@ impl<'a> Parser<'a> {
         }
 
         // <https://dev.mysql.com/doc/refman/8.4/en/create-table.html>
+        if self.peek_keyword(Keyword::STORAGE) {
+            let storage = match &self.peek_nth_token_ref(1).token {
+                Token::Word(w) if w.value.eq_ignore_ascii_case("DISK") => Some(StorageType::Disk),
+                Token::Word(w) if w.value.eq_ignore_ascii_case("MEMORY") => {
+                    Some(StorageType::Memory)
+                }
+                _ => None,
+            };
+            if let Some(storage) = storage {
+                self.advance_token();
+                self.advance_token();
+                return Ok(Some(SqlOption::Storage(storage)));
+            }
+        }
+
+        // <https://dev.mysql.com/doc/refman/8.4/en/create-table.html>
         if self.parse_keyword(Keyword::UNION) {
             let _ = self.consume_token(&Token::Eq);
             let value = self.next_token();

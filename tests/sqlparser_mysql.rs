@@ -2011,6 +2011,27 @@ fn parse_alter_table_table_options() {
 }
 
 #[test]
+fn parse_storage_table_option() {
+    match mysql_and_generic().verified_stmt("CREATE TABLE t (a INT) STORAGE MEMORY ENGINE = NDB") {
+        Statement::CreateTable(CreateTable {
+            table_options: CreateTableOptions::Plain(options),
+            ..
+        }) => assert_eq!(SqlOption::Storage(StorageType::Memory), options[0]),
+        _ => unreachable!(),
+    }
+    match alter_table_op_with_name(
+        mysql_and_generic().verified_stmt("ALTER TABLE t2 STORAGE DISK"),
+        "t2",
+    ) {
+        AlterTableOperation::TableOptions { options } => {
+            assert_eq!(vec![SqlOption::Storage(StorageType::Disk)], options)
+        }
+        op => panic!("unexpected operation {op:?}"),
+    }
+    mysql().verified_stmt("CREATE TABLE t (a INT) TABLESPACE ts STORAGE DISK");
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 
