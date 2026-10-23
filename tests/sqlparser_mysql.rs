@@ -1962,6 +1962,26 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_alter_table_drop_partition_names() {
+    match alter_table_op_with_name(
+        mysql().verified_stmt("ALTER TABLE t1 DROP PARTITION p0, p1"),
+        "t1",
+    ) {
+        AlterTableOperation::DropPartitionNames { names } => {
+            assert_eq!(vec![Ident::new("p0"), Ident::new("p1")], names)
+        }
+        op => panic!("unexpected operation {op:?}"),
+    }
+    assert_eq!(
+        all_dialects_except(|d| d.supports_drop_partition_names())
+            .parse_sql_statements("ALTER TABLE t1 DROP PARTITION p0"),
+        Err(ParserError::ParserError(
+            "Expected: (, found: p0".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 

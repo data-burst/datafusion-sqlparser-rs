@@ -11045,6 +11045,13 @@ impl<'a> Parser<'a> {
                     partitions,
                     if_exists: true,
                 }
+            } else if self.dialect.supports_drop_partition_names()
+                && self.peek_keyword(Keyword::PARTITION)
+                && self.peek_nth_token_ref(1).token != Token::LParen
+            {
+                self.expect_keyword_is(Keyword::PARTITION)?;
+                let names = self.parse_comma_separated(Parser::parse_identifier)?;
+                AlterTableOperation::DropPartitionNames { names }
             } else if self.parse_keyword(Keyword::PARTITION) {
                 self.expect_token(&Token::LParen)?;
                 let partitions = self.parse_comma_separated(Parser::parse_expr)?;

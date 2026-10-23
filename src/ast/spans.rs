@@ -1204,6 +1204,9 @@ impl Spanned for AlterTableOperation {
                 partitions,
                 if_exists: _,
             } => union_spans(partitions.iter().map(|i| i.span())),
+            AlterTableOperation::DropPartitionNames { names } => {
+                union_spans(names.iter().map(|i| i.span))
+            }
             AlterTableOperation::RenameColumn {
                 old_column_name,
                 new_column_name,

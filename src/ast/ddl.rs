@@ -374,6 +374,13 @@ pub enum AlterTableOperation {
         /// Whether `IF EXISTS` was specified for dropping partitions.
         if_exists: bool,
     },
+    /// `DROP PARTITION <name> [, <name> ...]`: drop partitions of the table by name.
+    ///
+    /// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/alter-table-partition-operations.html)
+    DropPartitionNames {
+        /// Names of the partitions to drop.
+        names: Vec<Ident>,
+    },
     /// `RENAME [ COLUMN ] <old_column_name> TO <new_column_name>`
     RenameColumn {
         /// Existing column name to rename.
@@ -837,6 +844,9 @@ impl fmt::Display for AlterTableOperation {
                 display_comma_separated(partitions),
                 ie = if *if_exists { " IF EXISTS" } else { "" }
             ),
+            AlterTableOperation::DropPartitionNames { names } => {
+                write!(f, "DROP PARTITION {}", display_comma_separated(names))
+            }
             AlterTableOperation::DropConstraint {
                 if_exists,
                 name,
