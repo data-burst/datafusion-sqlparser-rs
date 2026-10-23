@@ -1911,7 +1911,7 @@ fn parse_deprecated_mysql_unsigned_data_types() {
                     },
                     ColumnDef {
                         name: Ident::new("bar_double_precision"),
-                        data_type: DataType::DoublePrecisionUnsigned,
+                        data_type: DataType::DoublePrecisionUnsigned(ExactNumberInfo::None),
                         options: vec![],
                     },
                 ],
@@ -2089,6 +2089,27 @@ fn parse_national_character_types() {
             "Expected: ',' or ')' after column definition, found: VARYING".to_string()
         ))
     );
+}
+
+#[test]
+fn parse_double_precision_with_precision() {
+    let sql = "CREATE TABLE t (a DOUBLE PRECISION(20,2), b DOUBLE PRECISION(20,2) UNSIGNED, c DOUBLE PRECISION)";
+    match mysql_and_generic().verified_stmt(sql) {
+        Statement::CreateTable(CreateTable { columns, .. }) => {
+            assert_eq!(
+                vec![
+                    DataType::DoublePrecision(ExactNumberInfo::PrecisionAndScale(20, 2)),
+                    DataType::DoublePrecisionUnsigned(ExactNumberInfo::PrecisionAndScale(20, 2)),
+                    DataType::DoublePrecision(ExactNumberInfo::None),
+                ],
+                columns
+                    .iter()
+                    .map(|c| c.data_type.clone())
+                    .collect::<Vec<_>>()
+            );
+        }
+        _ => unreachable!(),
+    }
 }
 
 #[test]

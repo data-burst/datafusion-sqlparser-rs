@@ -349,16 +349,19 @@ pub enum DataType {
     ///
     /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/numeric-type-syntax.html
     DoubleUnsigned(ExactNumberInfo),
-    /// Double Precision, see [SQL Standard], [PostgreSQL].
+    /// Double Precision, see [SQL Standard], [PostgreSQL], with an optional [MySQL]
+    /// precision, e.g. DOUBLE PRECISION or DOUBLE PRECISION(10,2).
     ///
     /// [SQL Standard]: https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#approximate-numeric-type
     /// [PostgreSQL]: https://www.postgresql.org/docs/current/datatype-numeric.html
-    DoublePrecision,
-    /// [MySQL] unsigned double precision, e.g. DOUBLE PRECISION UNSIGNED.
+    /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/floating-point-types.html
+    DoublePrecision(ExactNumberInfo),
+    /// [MySQL] unsigned double precision with optional precision, e.g. DOUBLE PRECISION UNSIGNED
+    /// or DOUBLE PRECISION(10,2) UNSIGNED.
     /// Note: Using UNSIGNED with DOUBLE PRECISION is deprecated in recent versions of MySQL.
     ///
     /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/numeric-type-syntax.html
-    DoublePrecisionUnsigned,
+    DoublePrecisionUnsigned(ExactNumberInfo),
     /// [MySQL] numeric type padded with zeros, e.g. `INT(10) UNSIGNED ZEROFILL`.
     ///
     /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/numeric-type-syntax.html
@@ -690,8 +693,10 @@ impl fmt::Display for DataType {
             DataType::Double(info) => write!(f, "DOUBLE{info}"),
             DataType::DoubleUnsigned(info) => write!(f, "DOUBLE{info} UNSIGNED"),
             DataType::Float8 => write!(f, "FLOAT8"),
-            DataType::DoublePrecision => write!(f, "DOUBLE PRECISION"),
-            DataType::DoublePrecisionUnsigned => write!(f, "DOUBLE PRECISION UNSIGNED"),
+            DataType::DoublePrecision(info) => write!(f, "DOUBLE PRECISION{info}"),
+            DataType::DoublePrecisionUnsigned(info) => {
+                write!(f, "DOUBLE PRECISION{info} UNSIGNED")
+            }
             DataType::Zerofill(data_type) => write!(f, "{data_type} ZEROFILL"),
             DataType::Bool => write!(f, "BOOL"),
             DataType::Boolean => write!(f, "BOOLEAN"),

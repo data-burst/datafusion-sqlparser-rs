@@ -13060,10 +13060,11 @@ impl<'a> Parser<'a> {
                 Keyword::FLOAT8 => Ok(DataType::Float8),
                 Keyword::DOUBLE => {
                     if self.parse_keyword(Keyword::PRECISION) {
+                        let precision = self.parse_exact_number_optional_precision_scale()?;
                         if self.parse_keyword(Keyword::UNSIGNED) {
-                            Ok(DataType::DoublePrecisionUnsigned)
+                            Ok(DataType::DoublePrecisionUnsigned(precision))
                         } else {
-                            Ok(DataType::DoublePrecision)
+                            Ok(DataType::DoublePrecision(precision))
                         }
                     } else {
                         let precision = self.parse_exact_number_optional_precision_scale()?;
