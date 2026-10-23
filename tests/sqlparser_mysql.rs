@@ -1962,6 +1962,42 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_decimal_type_length() {
+    let sql = "CREATE TABLE t (a FLOAT(7.4), b DECIMAL(19.5), c DECIMAL(0.0), d DECIMAL(19,2), e FLOAT(4))";
+    match mysql().verified_stmt(sql) {
+        Statement::CreateTable(CreateTable { columns, .. }) => {
+            let custom = |name: &str, length: &str| {
+                DataType::Custom(
+                    ObjectName::from(vec![Ident::new(name)]),
+                    vec![length.to_string()],
+                )
+            };
+            assert_eq!(
+                vec![
+                    custom("FLOAT", "7.4"),
+                    custom("DECIMAL", "19.5"),
+                    custom("DECIMAL", "0.0"),
+                    DataType::Decimal(ExactNumberInfo::PrecisionAndScale(19, 2)),
+                    DataType::Float(ExactNumberInfo::Precision(4)),
+                ],
+                columns
+                    .iter()
+                    .map(|c| c.data_type.clone())
+                    .collect::<Vec<_>>()
+            );
+        }
+        _ => unreachable!(),
+    }
+    assert_eq!(
+        all_dialects_except(|d| d.supports_decimal_type_length())
+            .parse_sql_statements("CREATE TABLE t (a FLOAT(7.4))"),
+        Err(ParserError::ParserError(
+            "Could not parse '7.4' as u64: invalid digit found in string".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 
