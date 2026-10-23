@@ -1962,6 +1962,34 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_alter_table_convert_to_charset() {
+    match alter_table_op_with_name(
+        mysql_and_generic().verified_stmt(
+            "ALTER TABLE t CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
+        ),
+        "t",
+    ) {
+        AlterTableOperation::ConvertToCharset { charset, collation } => {
+            assert_eq!(Ident::new("utf8mb4"), charset);
+            assert_eq!(Some(Ident::new("utf8mb4_unicode_ci")), collation);
+        }
+        op => panic!("unexpected operation {op:?}"),
+    }
+    mysql_and_generic().verified_stmt("ALTER TABLE t CONVERT TO CHARACTER SET DEFAULT");
+    mysql_and_generic().one_statement_parses_to(
+        "ALTER TABLE t CONVERT TO CHARSET latin1",
+        "ALTER TABLE t CONVERT TO CHARACTER SET latin1",
+    );
+    assert_eq!(
+        all_dialects_except(|d| d.supports_alter_table_convert_to_charset())
+            .parse_sql_statements("ALTER TABLE t CONVERT TO CHARACTER SET utf8mb4"),
+        Err(ParserError::ParserError(
+            "Expected: ADD, RENAME, PARTITION, SWAP, DROP, REPLICA IDENTITY, SET, or SET TBLPROPERTIES after ALTER TABLE, found: CONVERT".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 

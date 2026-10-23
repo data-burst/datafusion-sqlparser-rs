@@ -374,6 +374,16 @@ pub enum AlterTableOperation {
         /// Whether `IF EXISTS` was specified for dropping partitions.
         if_exists: bool,
     },
+    /// `CONVERT TO CHARACTER SET <charset> [COLLATE <collation>]`: change the character set of
+    /// the table and of all its character columns.
+    ///
+    /// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/alter-table.html)
+    ConvertToCharset {
+        /// The new character set; `DEFAULT` for the database's.
+        charset: Ident,
+        /// The new collation.
+        collation: Option<Ident>,
+    },
     /// `RENAME [ COLUMN ] <old_column_name> TO <new_column_name>`
     RenameColumn {
         /// Existing column name to rename.
@@ -837,6 +847,13 @@ impl fmt::Display for AlterTableOperation {
                 display_comma_separated(partitions),
                 ie = if *if_exists { " IF EXISTS" } else { "" }
             ),
+            AlterTableOperation::ConvertToCharset { charset, collation } => {
+                write!(f, "CONVERT TO CHARACTER SET {charset}")?;
+                if let Some(collation) = collation {
+                    write!(f, " COLLATE {collation}")?;
+                }
+                Ok(())
+            }
             AlterTableOperation::DropConstraint {
                 if_exists,
                 name,

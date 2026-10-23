@@ -249,6 +249,10 @@ impl Dialect for GenericDialect {
         true
     }
 
+    fn supports_alter_table_convert_to_charset(&self) -> bool {
+        true
+    }
+
     fn supports_interval_options(&self) -> bool {
         true
     }
