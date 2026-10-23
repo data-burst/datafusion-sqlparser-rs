@@ -1740,6 +1740,19 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Returns true if this dialect accepts `ALTER TABLE ... RENAME new_name`, where
+    /// the `TO` or `AS` keyword before the new table name is omitted.
+    ///
+    /// Example:
+    /// ```sql
+    /// ALTER TABLE t1 RENAME t2;
+    /// ```
+    ///
+    /// <https://dev.mysql.com/doc/refman/8.4/en/alter-table.html>
+    fn supports_alter_table_rename_without_keyword(&self) -> bool {
+        false
+    }
+
     /// Returns true if the dialect supports the `INTERVAL` data type with [Postgres]-style options.
     ///
     /// Examples:

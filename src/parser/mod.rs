@@ -10939,6 +10939,16 @@ impl<'a> Parser<'a> {
                 AlterTableOperation::RenameTable {
                     table_name: RenameTableNameKind::As(table_name),
                 }
+            } else if self.dialect.supports_alter_table_rename_without_keyword()
+                && self
+                    .peek_one_of_keywords(&[Keyword::COLUMN, Keyword::INDEX, Keyword::KEY])
+                    .is_none()
+                && !matches!(&self.peek_nth_token_ref(1).token, Token::Word(w) if w.keyword == Keyword::TO)
+            {
+                let table_name = self.parse_object_name(false)?;
+                AlterTableOperation::RenameTable {
+                    table_name: RenameTableNameKind::Bare(table_name),
+                }
             } else {
                 let _ = self.parse_keyword(Keyword::COLUMN); // [ COLUMN ]
                 let old_column_name = self.parse_identifier()?;

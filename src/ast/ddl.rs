@@ -3992,6 +3992,8 @@ pub enum RenameTableNameKind {
     As(ObjectName),
     /// `TO new_table_name`
     To(ObjectName),
+    /// `new_table_name`, without a keyword
+    Bare(ObjectName),
 }
 
 impl fmt::Display for RenameTableNameKind {
@@ -3999,6 +4001,7 @@ impl fmt::Display for RenameTableNameKind {
         match self {
             RenameTableNameKind::As(name) => write!(f, "AS {name}"),
             RenameTableNameKind::To(name) => write!(f, "TO {name}"),
+            RenameTableNameKind::Bare(name) => write!(f, "{name}"),
         }
     }
 }
@@ -4036,6 +4039,7 @@ impl Spanned for RenameTableNameKind {
         match self {
             RenameTableNameKind::As(name) => name.span(),
             RenameTableNameKind::To(name) => name.span(),
+            RenameTableNameKind::Bare(name) => name.span(),
         }
     }
 }

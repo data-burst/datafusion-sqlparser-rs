@@ -1962,6 +1962,35 @@ fn parse_zerofill() {
 }
 
 #[test]
+fn parse_alter_table_rename_without_keyword() {
+    match alter_table_op_with_name(mysql().verified_stmt("ALTER TABLE t1 RENAME t4"), "t1") {
+        AlterTableOperation::RenameTable { table_name } => assert_eq!(
+            RenameTableNameKind::Bare(ObjectName::from(vec![Ident::new("t4")])),
+            table_name
+        ),
+        op => panic!("unexpected operation {op:?}"),
+    }
+    mysql().verified_stmt("ALTER TABLE t1 RENAME db.t4");
+    match alter_table_op_with_name(
+        mysql().one_statement_parses_to(
+            "ALTER TABLE t1 RENAME a TO b",
+            "ALTER TABLE t1 RENAME COLUMN a TO b",
+        ),
+        "t1",
+    ) {
+        AlterTableOperation::RenameColumn { .. } => {}
+        op => panic!("unexpected operation {op:?}"),
+    }
+    assert_eq!(
+        all_dialects_except(|d| d.supports_alter_table_rename_without_keyword())
+            .parse_sql_statements("ALTER TABLE t1 RENAME t4"),
+        Err(ParserError::ParserError(
+            "Expected: TO, found: EOF".to_string()
+        ))
+    );
+}
+
+#[test]
 fn parse_simple_insert() {
     let sql = r"INSERT INTO tasks (title, priority) VALUES ('Test Some Inserts', 1), ('Test Entry 2', 2), ('Test Entry 3', 3)";
 
